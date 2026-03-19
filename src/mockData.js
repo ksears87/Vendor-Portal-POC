@@ -10,12 +10,4 @@ export const D365_VENDORS = [
   { id: 'VEN-00610', name: 'Mountain Tech Group', taxId: '89-0123456', group: 'CONTRACTOR', status: 'Active', city: 'Denver, CO' },
 ];
 
-export const SEED = [
-  { id: 'REQ-2025-0041', vendorName: 'Pacific Rim Trading Co', vendorGroup: 'SUPPLIER', requester: 'Sarah Johnson', resort: 'RST-001 – Grand Mountain', submitted: '2025-03-10', status: 'Pending', classification: 'Goods/Products', dupIds: ['VEN-00445'], apNotes: '', apProcessor: 'Maria Santos' },
-  { id: 'REQ-2025-0040', vendorName: 'Elite Event Services', vendorGroup: 'SERVICE', requester: 'Mike Torres', resort: 'RST-002 – Lakeside Lodge', submitted: '2025-03-09', status: 'Pending', classification: 'Services', dupIds: ['VEN-00502'], apNotes: 'Potential duplicate — verifying with requester.', apProcessor: 'James Wu' },
-  { id: 'REQ-2025-0039', vendorName: 'Johnson, Robert M', vendorGroup: 'EMPLOYEE', requester: 'Lisa Chen', resort: 'RST-001 – Grand Mountain', submitted: '2025-03-08', status: 'Approved', classification: 'Services', dupIds: [], apNotes: '', apProcessor: 'Patricia Adams' },
-  { id: 'REQ-2025-0038', vendorName: 'Coastal Supply Group', vendorGroup: 'SUPPLIER', requester: 'Sarah Johnson', resort: 'RST-003 – Beach Paradise', submitted: '2025-03-07', status: 'Rejected', classification: 'Goods/Products', dupIds: [], apNotes: 'Vendor already exists as VEN-00055. Please use existing vendor record.', apProcessor: 'Maria Santos' },
-  { id: 'REQ-2025-0037', vendorName: 'Northeast Consulting LLC', vendorGroup: 'SERVICE', requester: 'David Park', resort: 'RST-004 – Forest Retreat', submitted: '2025-03-06', status: 'Approved', classification: 'Services', dupIds: [], apNotes: '', apProcessor: 'James Wu' },
-  { id: 'REQ-2025-0035', vendorName: 'Mountain Tech Solutions', vendorGroup: 'CONTRACTOR', requester: 'Mike Torres', resort: 'RST-001 – Grand Mountain', submitted: '2025-03-04', status: 'Pending', classification: 'Services', dupIds: ['VEN-00610'], apNotes: '', apProcessor: 'Patricia Adams' },
-  { id: 'REQ-2025-0033', vendorName: 'Sunrise Catering Co', vendorGroup: 'SERVICE', requester: 'Sarah Johnson', resort: 'RST-005 – Desert Oasis', submitted: '2025-03-01', status: 'Received', classification: 'Services', dupIds: [], apNotes: '', apProcessor: '' },
-];
+export const SEED = [];
