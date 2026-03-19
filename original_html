@@ -1,0 +1,679 @@
+
+<div id="vp-root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const {useState,createElement:h,Fragment} = React;
+
+const C={
+  blue:'#0078D4',blueDark:'#005A9E',blueHover:'#106EBE',
+  blueLight:'#EFF6FC',blueLighter:'#DEECF9',
+  bg:'#F3F2F1',surface:'#FFFFFF',surfaceAlt:'#FAF9F8',
+  text:'#201F1E',textSec:'#605E5C',textMuted:'#A19F9D',
+  border:'#EDEBE9',borderHov:'#C8C6C4',
+  success:'#107C10',successBg:'#DFF6DD',
+  warn:'#C86F00',warnBg:'#FFF4CE',
+  err:'#A4262C',errBg:'#FDE7E9',
+  info:'#0078D4',infoBg:'#EFF6FC',
+};
+
+const STATUS={
+  Pending:{fg:C.warn,bg:C.warnBg,dot:C.warn,label:'Pending Review'},
+  'On Hold':{fg:'#7A4F00',bg:'#FFF4CE',dot:C.warn,label:'On Hold'},
+  Approved:{fg:C.success,bg:C.successBg,dot:C.success,label:'Approved'},
+  Rejected:{fg:C.err,bg:C.errBg,dot:C.err,label:'Rejected'},
+  Received:{fg:C.blue,bg:C.blueLight,dot:C.blue,label:'Received'},
+};
+
+const RESORTS=['RST-001 – Grand Mountain','RST-002 – Lakeside Lodge','RST-003 – Beach Paradise','RST-004 – Forest Retreat','RST-005 – Desert Oasis'];
+const VENDOR_GROUPS=['SUPPLIER','SERVICE','EMPLOYEE','CONTRACTOR','INTERCOMPANY'];
+const PAY_TERMS=['Net 30','Net 45','Net 60','Net 15','Due on Receipt','2/10 Net 30'];
+const CURRENCIES=['USD','EUR','GBP','CAD','MXN','JPY'];
+const PAY_METHODS=['Check','ACH','Wire Transfer','Credit Card','Virtual Card'];
+const COUNTRIES=['United States','Canada','Mexico','United Kingdom','Germany','France','Japan','China','Australia','Other'];
+const REG_TYPES=['EIN','SSN','ITIN','Foreign TIN','VAT Number','Other'];
+const ENTITY_TYPES=['Individual / Sole Proprietor','C Corporation','S Corporation','Partnership','Trust / Estate','LLC','Other'];
+const BOX_1099=['Box 1 – Rents','Box 2 – Royalties','Box 6 – Medical','Box 7 – NEC','Box 10 – Crop Insurance','N/A'];
+
+const D365_VENDORS=[
+  {id:'VEN-00142',name:'Acme Corporation',taxId:'12-3456789',group:'SUPPLIER',status:'Active',city:'Chicago, IL'},
+  {id:'VEN-00089',name:'Acme Corp LLC',taxId:'12-3456789',group:'SUPPLIER',status:'Active',city:'Chicago, IL'},
+  {id:'VEN-00201',name:'Global Services Inc',taxId:'45-6789012',group:'SERVICE',status:'Active',city:'New York, NY'},
+  {id:'VEN-00178',name:'Global Service Solutions',taxId:'45-6789012',group:'SERVICE',status:'Active',city:'New York, NY'},
+  {id:'VEN-00055',name:'Tech Supplies Co',taxId:'78-9012345',group:'SUPPLIER',status:'Active',city:'Austin, TX'},
+  {id:'VEN-00312',name:'Premier Staffing Group',taxId:'23-4567890',group:'SERVICE',status:'Active',city:'Denver, CO'},
+  {id:'VEN-00445',name:'Pacific Rim Traders',taxId:'56-7890123',group:'SUPPLIER',status:'Active',city:'Seattle, WA'},
+  {id:'VEN-00502',name:'Elite Events LLC',taxId:'67-8901234',group:'SERVICE',status:'Active',city:'Las Vegas, NV'},
+  {id:'VEN-00610',name:'Mountain Tech Group',taxId:'89-0123456',group:'CONTRACTOR',status:'Active',city:'Denver, CO'},
+];
+
+const SEED=[
+  {id:'REQ-2025-0041',vendorName:'Pacific Rim Trading Co',vendorGroup:'SUPPLIER',requester:'Sarah Johnson',resort:'RST-001 – Grand Mountain',submitted:'2025-03-10',status:'Pending',classification:'Goods/Products',dupIds:['VEN-00445'],apNotes:''},
+  {id:'REQ-2025-0040',vendorName:'Elite Event Services',vendorGroup:'SERVICE',requester:'Mike Torres',resort:'RST-002 – Lakeside Lodge',submitted:'2025-03-09',status:'On Hold',classification:'Services',dupIds:['VEN-00502'],apNotes:'Potential duplicate — verifying with requester.'},
+  {id:'REQ-2025-0039',vendorName:'Johnson, Robert M',vendorGroup:'EMPLOYEE',requester:'Lisa Chen',resort:'RST-001 – Grand Mountain',submitted:'2025-03-08',status:'Approved',classification:'Services',dupIds:[],apNotes:''},
+  {id:'REQ-2025-0038',vendorName:'Coastal Supply Group',vendorGroup:'SUPPLIER',requester:'Sarah Johnson',resort:'RST-003 – Beach Paradise',submitted:'2025-03-07',status:'Rejected',classification:'Goods/Products',dupIds:[],apNotes:'Vendor already exists as VEN-00055. Please use existing vendor record.'},
+  {id:'REQ-2025-0037',vendorName:'Northeast Consulting LLC',vendorGroup:'SERVICE',requester:'David Park',resort:'RST-004 – Forest Retreat',submitted:'2025-03-06',status:'Approved',classification:'Services',dupIds:[],apNotes:''},
+  {id:'REQ-2025-0035',vendorName:'Mountain Tech Solutions',vendorGroup:'CONTRACTOR',requester:'Mike Torres',resort:'RST-001 – Grand Mountain',submitted:'2025-03-04',status:'Pending',classification:'Services',dupIds:['VEN-00610'],apNotes:''},
+];
+
+function sim(a,b){
+  const cl=s=>s.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
+  const s1=cl(a),s2=cl(b);
+  if(!s1||!s2||s1.length<3)return 0;
+  if(s1===s2)return 1;
+  if(s1.includes(s2)||s2.includes(s1))return 0.85;
+  const w1=s1.split(/\s+/).filter(w=>w.length>2);
+  const w2=s2.split(/\s+/).filter(w=>w.length>2);
+  if(!w1.length||!w2.length)return 0;
+  const hits=w1.filter(w=>w2.some(x=>x.startsWith(w)||w.startsWith(x))).length;
+  return hits/Math.max(w1.length,w2.length);
+}
+function detectDupes(name){
+  if(!name||name.trim().length<3)return[];
+  return D365_VENDORS.map(v=>({...v,score:sim(name,v.name)}))
+    .filter(v=>v.score>0.28).sort((a,b)=>b.score-a.score).slice(0,4);
+}
+
+// primitives
+function Badge({status}){
+  const s=STATUS[status]||{fg:C.textSec,bg:C.bg,dot:C.textSec,label:status};
+  return h('span',{style:{display:'inline-flex',alignItems:'center',gap:4,padding:'2px 9px',
+    borderRadius:12,fontSize:11,fontWeight:700,color:s.fg,backgroundColor:s.bg,whiteSpace:'nowrap'}},
+    h('span',{style:{width:6,height:6,borderRadius:'50%',backgroundColor:s.dot,flexShrink:0}}),
+    s.label);
+}
+function GroupTag({g}){
+  return h('span',{style:{fontSize:11,padding:'2px 7px',borderRadius:2,backgroundColor:C.bg,
+    color:C.textSec,fontWeight:700,letterSpacing:'0.3px'}},g);
+}
+function Toggle({checked,onChange}){
+  return h('div',{onClick:()=>onChange(!checked),style:{width:38,height:20,borderRadius:10,
+    cursor:'pointer',backgroundColor:checked?C.blue:C.border,position:'relative',flexShrink:0}},
+    h('div',{style:{position:'absolute',top:2,left:checked?20:2,width:16,height:16,borderRadius:'50%',
+      backgroundColor:'white',transition:'left .15s',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}));
+}
+function Lbl({children,req}){
+  return h('label',{style:{display:'block',fontSize:11,fontWeight:700,color:C.textSec,
+    textTransform:'uppercase',letterSpacing:'0.4px',marginBottom:4}},
+    children,req&&h('span',{style:{color:C.err,marginLeft:2}},'*'));
+}
+const iSt={width:'100%',padding:'7px 10px',fontSize:13,border:`1px solid ${C.border}`,
+  borderRadius:2,outline:'none',backgroundColor:C.surface,color:C.text,
+  boxSizing:'border-box',fontFamily:"'Segoe UI',system-ui,sans-serif"};
+function Inp({value,onChange,placeholder,type='text',disabled}){
+  return h('input',{type,value,onChange,placeholder,disabled,
+    style:{...iSt,backgroundColor:disabled?C.surfaceAlt:C.surface,color:disabled?C.textMuted:C.text}});
+}
+function Sel({value,onChange,options,placeholder,disabled}){
+  return h('select',{value,onChange,disabled,
+    style:{...iSt,appearance:'none',cursor:disabled?'default':'pointer',
+      backgroundColor:disabled?C.surfaceAlt:C.surface,color:value?C.text:C.textMuted}},
+    placeholder&&h('option',{value:''},placeholder),
+    options.map(o=>h('option',{key:o,value:o},o)));
+}
+function Card({children,style={},accent}){
+  return h('div',{style:{backgroundColor:accent?'#F8FBFF':C.surface,borderRadius:3,
+    padding:'16px 18px',border:`1px solid ${accent?C.blue+'40':C.border}`,...style}},children);
+}
+function SecHead({icon,title,sub,apOnly}){
+  return h('div',{style:{display:'flex',alignItems:'flex-start',gap:10,paddingBottom:10,
+    marginBottom:14,borderBottom:`2px solid ${apOnly?C.blue+'30':C.border}`}},
+    h('span',{style:{fontSize:15,marginTop:1}},icon),
+    h('div',{style:{flex:1}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+        h('span',{style:{fontSize:14,fontWeight:700,color:C.text}},title),
+        apOnly&&h('span',{style:{fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:3,
+          backgroundColor:C.blueLight,color:C.blue,letterSpacing:'0.5px',textTransform:'uppercase'}},'AP ONLY')),
+      sub&&h('p',{style:{margin:'1px 0 0',fontSize:12,color:C.textSec}},sub)));
+}
+function ApiNote({children}){
+  return h('div',{style:{fontSize:11,color:C.textMuted,fontStyle:'italic',marginTop:6,
+    padding:'4px 8px',backgroundColor:C.bg,borderRadius:2,borderLeft:`2px solid ${C.border}`}},
+    '🔌 ',children);
+}
+
+// Duplicate panel
+function DupPanel({dupes}){
+  if(!dupes.length)return null;
+  return h('div',{style:{padding:'12px 14px',backgroundColor:C.warnBg,
+    border:`1.5px solid ${C.warn}60`,borderRadius:3,marginTop:4}},
+    h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:8}},
+      h('span',{style:{fontSize:14}},'⚠️'),
+      h('span',{style:{fontSize:13,fontWeight:700,color:C.warn}},
+        `${dupes.length} Potential Duplicate${dupes.length>1?'s':''} Found in D365`)),
+    h('p',{style:{fontSize:12,color:C.text,margin:'0 0 10px'}},
+      'The following vendors already exist with similar names. Verify before submitting.'),
+    dupes.map(d=>{
+      const pct=Math.round(d.score*100);
+      return h('div',{key:d.id,style:{display:'flex',justifyContent:'space-between',
+        alignItems:'center',padding:'6px 10px',backgroundColor:C.surface,borderRadius:2,
+        marginBottom:4,fontSize:12,border:`1px solid ${C.border}`}},
+        h('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+          h('span',{style:{fontWeight:700,color:C.blue,fontFamily:'monospace'}},d.id),
+          h('span',{style:{fontWeight:600,color:C.text}},d.name),
+          h(GroupTag,{g:d.group})),
+        h('div',{style:{display:'flex',gap:10,alignItems:'center'}},
+          h('span',{style:{color:C.textSec}},d.city),
+          h('span',{style:{padding:'2px 7px',borderRadius:10,fontSize:11,fontWeight:700,
+            backgroundColor:pct>70?C.errBg:C.warnBg,color:pct>70?C.err:C.warn}},
+            `${pct}% match`)));
+    }),
+    h(ApiNote,null,"GET /VendVendorEntity?$filter=contains(Name,'…')"));
+}
+
+// New Request Form
+function NewRequestForm({role,onSubmit,onCancel}){
+  const blank={resort:'',vendorGroup:'',vendorName:'',firstName:'',middleName:'',lastName:'',
+    oneTimeVendor:false,addrCountry:'',street1:'',street2:'',city:'',state:'',zip:'',
+    contactName:'',contactEmail:'',contactPhone:'',regType:'',regNumber:'',w9w8:'',
+    classification:'',mfgCountry:'',svcCountry:'',description:'',
+    payTerms:'',currency:'',payMethod:'',reqPhone:'',reqComments:'',interestedACH:false,
+    report1099:false,w9Received:false,w8Received:false,fatca:'',fedTaxId:'',taxIdType:'',
+    box1099:'',foreignEntity:false,nameOn1099:'Vendor Name',entityType:''};
+  const [f,setF]=useState(blank);
+  const [dupes,setDupes]=useState([]);
+  const [timer,setTimer]=useState(null);
+  const [done,setDone]=useState(false);
+  const upd=(k,v)=>setF(p=>({...p,[k]:v}));
+  const isEmp=f.vendorGroup==='EMPLOYEE';
+  const checkD=name=>{clearTimeout(timer);setTimer(setTimeout(()=>setDupes(detectDupes(name)),450));};
+  const g2={display:'grid',gridTemplateColumns:'1fr 1fr',gap:12};
+  const g3={display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12};
+  const s2={gridColumn:'span 2'};
+  const s3={gridColumn:'span 3'};
+  const handleSubmit=()=>{setDone(true);setTimeout(()=>onSubmit(f),1400);};
+
+  if(done)return h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',
+    justifyContent:'center',minHeight:280,gap:14,textAlign:'center'}},
+    h('div',{style:{width:60,height:60,borderRadius:'50%',backgroundColor:C.successBg,
+      display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}},'📬'),
+    h('h2',{style:{margin:0,fontSize:18,fontWeight:700,color:C.text}},'Request Submitted'),
+    h('p',{style:{margin:0,fontSize:13,color:C.textSec,maxWidth:380}},
+      'Your vendor request has been sent to the AP team for review.'),
+    h(ApiNote,null,'POST /VendorRequestEntity · Pending AP approval'));
+
+  return h('div',null,
+    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}},
+      h('div',null,
+        h('h1',{style:{margin:0,fontSize:20,fontWeight:700,color:C.text}},'New Vendor Request'),
+        h('p',{style:{margin:'4px 0 0',fontSize:13,color:C.textSec}},'Complete all required fields. AP will review against the D365 vendor master.')),
+      h(ApiNote,null,'D365 F&O · /VendVendorEntity')),
+
+    h('div',{style:{display:'flex',flexDirection:'column',gap:14}},
+
+      // Core
+      h(Card,null,
+        h(SecHead,{icon:'🏢',title:'Core Information',sub:'General request details'}),
+        h('div',{style:g2},
+          h('div',null,h(Lbl,{req:true},'Resort / Company #'),h(Sel,{value:f.resort,onChange:e=>upd('resort',e.target.value),options:RESORTS,placeholder:'Select resort…'})),
+          h('div',null,h(Lbl,{req:true},'Vendor Group'),h(Sel,{value:f.vendorGroup,onChange:e=>upd('vendorGroup',e.target.value),options:VENDOR_GROUPS,placeholder:'Select group…'})),
+          isEmp?h(Fragment,null,
+            h('div',null,h(Lbl,{req:true},'First Name'),h(Inp,{value:f.firstName,onChange:e=>{upd('firstName',e.target.value);checkD(`${e.target.value} ${f.lastName}`);},placeholder:'First name'})),
+            h('div',null,h(Lbl,null,'Middle Name'),h(Inp,{value:f.middleName,onChange:e=>upd('middleName',e.target.value),placeholder:'Optional'})),
+            h('div',{style:s2},h(Lbl,{req:true},'Last Name'),h(Inp,{value:f.lastName,onChange:e=>{upd('lastName',e.target.value);checkD(`${f.firstName} ${e.target.value}`);},placeholder:'Last name'})))
+          :h('div',{style:s2},h(Lbl,{req:true},'Vendor Name'),h(Inp,{value:f.vendorName,onChange:e=>{upd('vendorName',e.target.value);checkD(e.target.value);},placeholder:'Enter legal vendor name…'})),
+          h('div',{style:s2},
+            h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',
+              padding:'9px 12px',backgroundColor:C.surfaceAlt,borderRadius:2,border:`1px solid ${C.border}`}},
+              h('div',null,
+                h('div',{style:{fontSize:13,fontWeight:600,color:C.text}},'One-Time Vendor'),
+                h('div',{style:{fontSize:11,color:C.textSec}},'Enable for single-transaction vendors only')),
+              h(Toggle,{checked:f.oneTimeVendor,onChange:v=>upd('oneTimeVendor',v)}))))),
+
+      h(DupPanel,{dupes}),
+
+      // Address
+      h(Card,null,
+        h(SecHead,{icon:'📍',title:'Address',sub:'Primary vendor mailing address'}),
+        h('div',{style:g2},
+          h('div',{style:s2},h(Lbl,{req:true},'Country'),h(Sel,{value:f.addrCountry,onChange:e=>upd('addrCountry',e.target.value),options:COUNTRIES,placeholder:'Select country…'})),
+          h('div',{style:s2},h(Lbl,{req:true},'Street Address 1'),h(Inp,{value:f.street1,onChange:e=>upd('street1',e.target.value),placeholder:'Street address'})),
+          h('div',{style:s2},h(Lbl,null,'Street Address 2'),h(Inp,{value:f.street2,onChange:e=>upd('street2',e.target.value),placeholder:'Suite, unit (optional)'})),
+          h('div',null,h(Lbl,{req:true},'City'),h(Inp,{value:f.city,onChange:e=>upd('city',e.target.value),placeholder:'City'})),
+          h('div',null,h(Lbl,null,'State / Province'),h(Inp,{value:f.state,onChange:e=>upd('state',e.target.value),placeholder:'State'})),
+          h('div',null,h(Lbl,{req:true},'ZIP / Postal Code'),h(Inp,{value:f.zip,onChange:e=>upd('zip',e.target.value),placeholder:'ZIP'}))),
+        h(ApiNote,null,'Maps to LogisticsPostalAddress in D365')),
+
+      // Contact
+      h(Card,null,
+        h(SecHead,{icon:'👤',title:'Vendor Accounting Contact'}),
+        h('div',{style:g3},
+          h('div',null,h(Lbl,{req:true},'Contact Name'),h(Inp,{value:f.contactName,onChange:e=>upd('contactName',e.target.value),placeholder:'Full name'})),
+          h('div',null,h(Lbl,{req:true},'Contact Email'),h(Inp,{value:f.contactEmail,onChange:e=>upd('contactEmail',e.target.value),type:'email',placeholder:'accounts@vendor.com'})),
+          h('div',null,h(Lbl,{req:true},'Contact Phone'),h(Inp,{value:f.contactPhone,onChange:e=>upd('contactPhone',e.target.value),placeholder:'(555) 000-0000'})))),
+
+      // Registration
+      h(Card,null,
+        h(SecHead,{icon:'📋',title:'Registration & Tax Documentation'}),
+        h('div',{style:g3},
+          h('div',null,h(Lbl,null,'Registration Type'),h(Sel,{value:f.regType,onChange:e=>upd('regType',e.target.value),options:REG_TYPES,placeholder:'Select…'})),
+          h('div',null,h(Lbl,null,'Registration Number'),h(Inp,{value:f.regNumber,onChange:e=>upd('regNumber',e.target.value),placeholder:'XX-XXXXXXX'})),
+          h('div',null,h(Lbl,null,'W-9 / W-8 Status'),h(Sel,{value:f.w9w8,onChange:e=>upd('w9w8',e.target.value),options:['W-9 (US Entity)','W-8BEN (Foreign Individual)','W-8BEN-E (Foreign Entity)','Pending','Not Required'],placeholder:'Select…'})),
+          h('div',{style:s3},
+            h(Lbl,null,'Upload W-9 / W-8 Documents'),
+            h('div',{style:{padding:'14px',border:`1.5px dashed ${C.borderHov}`,borderRadius:3,
+              backgroundColor:C.surfaceAlt,textAlign:'center',cursor:'pointer'}},
+              h('div',{style:{fontSize:13,color:C.textSec}},
+                h('span',{style:{fontSize:18,display:'block',marginBottom:4}},'📎'),
+                'Drag & drop files here, or ',h('span',{style:{color:C.blue,fontWeight:700}},'browse')),
+              h('div',{style:{fontSize:11,color:C.textMuted,marginTop:4}},'PDF, JPG, PNG · Max 25 MB'))))),
+
+      // Classification
+      h(Card,null,
+        h(SecHead,{icon:'🏷️',title:'Vendor Classification'}),
+        h(Lbl,{req:true},'Classification'),
+        h('div',{style:{display:'flex',gap:8,marginBottom:14}},
+          ['Goods/Products','Services','Other'].map(cl=>
+            h('button',{key:cl,onClick:()=>upd('classification',cl),style:{
+              flex:1,padding:'9px 6px',borderRadius:2,cursor:'pointer',fontSize:13,fontWeight:700,
+              border:`2px solid ${f.classification===cl?C.blue:C.border}`,
+              backgroundColor:f.classification===cl?C.blueLight:'transparent',
+              color:f.classification===cl?C.blue:C.textSec,fontFamily:"'Segoe UI',system-ui,sans-serif"}},
+              cl==='Goods/Products'?'📦 Goods / Products':cl==='Services'?'🛠️ Services':'📝 Other'))),
+        f.classification&&h('div',{style:g2},
+          f.classification==='Goods/Products'&&h('div',null,h(Lbl,{req:true},'Country of Manufacture'),h(Sel,{value:f.mfgCountry,onChange:e=>upd('mfgCountry',e.target.value),options:COUNTRIES,placeholder:'Select…'})),
+          f.classification==='Services'&&h('div',null,h(Lbl,{req:true},'Country of Service'),h(Sel,{value:f.svcCountry,onChange:e=>upd('svcCountry',e.target.value),options:COUNTRIES,placeholder:'Select…'})),
+          h('div',{style:f.classification==='Other'?s2:{}},
+            h(Lbl,{req:true},f.classification==='Other'?'Detailed Description':'Goods / Services Description'),
+            h('textarea',{value:f.description,onChange:e=>upd('description',e.target.value),rows:3,
+              placeholder:`Describe the ${f.classification==='Goods/Products'?'goods':'services'}…`,
+              style:{...iSt,resize:'vertical'}})))),
+
+      // Payment
+      h(Card,null,
+        h(SecHead,{icon:'💳',title:'Payment & Currency'}),
+        h('div',{style:g3},
+          h('div',null,h(Lbl,{req:true},'Terms of Payment'),h(Sel,{value:f.payTerms,onChange:e=>upd('payTerms',e.target.value),options:PAY_TERMS,placeholder:'Select…'})),
+          h('div',null,h(Lbl,{req:true},'Billing Currency'),h(Sel,{value:f.currency,onChange:e=>upd('currency',e.target.value),options:CURRENCIES,placeholder:'Select…'})),
+          h('div',null,
+            h(Lbl,{req:role==='ap'},'Preferred Payment Method',!role==='ap'&&h('span',{style:{fontSize:10,color:C.textMuted,fontWeight:400,marginLeft:4,textTransform:'none'}},'(set by AP)')),
+            h(Sel,{value:f.payMethod,onChange:e=>upd('payMethod',e.target.value),options:PAY_METHODS,placeholder:'Select…',disabled:role!=='ap'})))),
+
+      // Requester
+      h(Card,null,
+        h(SecHead,{icon:'🙋',title:'Requester Information'}),
+        h('div',{style:g2},
+          h('div',null,h(Lbl,null,'Requester Phone'),h(Inp,{value:f.reqPhone,onChange:e=>upd('reqPhone',e.target.value),placeholder:'(555) 000-0000'})),
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',
+            padding:'9px 12px',backgroundColor:C.surfaceAlt,borderRadius:2,border:`1px solid ${C.border}`,marginTop:17}},
+            h('div',null,
+              h('div',{style:{fontSize:13,fontWeight:600,color:C.text}},'Interested in ACH / Credit Card'),
+              h('div',{style:{fontSize:11,color:C.textSec}},'AP will follow up if selected')),
+            h(Toggle,{checked:f.interestedACH,onChange:v=>upd('interestedACH',v)})),
+          h('div',{style:s2},
+            h(Lbl,null,'Requester Comments'),
+            h('textarea',{value:f.reqComments,onChange:e=>upd('reqComments',e.target.value),rows:3,
+              placeholder:'Add any context or notes for the AP team…',style:{...iSt,resize:'vertical'}})))),
+
+      // AP Only
+      role==='ap'&&h(Card,{accent:true},
+        h(SecHead,{icon:'🔒',title:'AP Approval Section',sub:'D365 tax configuration — not visible to requesters',apOnly:true}),
+        h('div',{style:g3},
+          [['report1099','Report 1099'],['w9Received','W-9 Received'],['w8Received','W-8 Received']].map(([k,l])=>
+            h('div',{key:k,style:{display:'flex',alignItems:'center',justifyContent:'space-between',
+              padding:'9px 12px',backgroundColor:C.blueLight,borderRadius:2,border:`1px solid ${C.blue}20`}},
+              h('span',{style:{fontSize:13,fontWeight:600,color:C.text}},l),
+              h(Toggle,{checked:f[k],onChange:v=>upd(k,v)}))),
+          h('div',null,h(Lbl,null,'FATCA Filing'),h(Sel,{value:f.fatca,onChange:e=>upd('fatca',e.target.value),options:['Exempt','Not Exempt','N/A'],placeholder:'Select…'})),
+          h('div',null,h(Lbl,{req:true},'Federal Tax ID'),h(Inp,{value:f.fedTaxId,onChange:e=>upd('fedTaxId',e.target.value),placeholder:'XX-XXXXXXX'})),
+          h('div',null,h(Lbl,null,'Tax ID Type'),h(Sel,{value:f.taxIdType,onChange:e=>upd('taxIdType',e.target.value),options:['EIN','SSN','ITIN','Foreign TIN'],placeholder:'Select…'})),
+          h('div',null,h(Lbl,null,'1099 Box'),h(Sel,{value:f.box1099,onChange:e=>upd('box1099',e.target.value),options:BOX_1099,placeholder:'Select…'})),
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',
+            padding:'9px 12px',backgroundColor:C.blueLight,borderRadius:2,border:`1px solid ${C.blue}20`}},
+            h('span',{style:{fontSize:13,fontWeight:600,color:C.text}},'Foreign Entity Indicator'),
+            h(Toggle,{checked:f.foreignEntity,onChange:v=>upd('foreignEntity',v)})),
+          h('div',null,h(Lbl,null,'Entity Type'),h(Sel,{value:f.entityType,onChange:e=>upd('entityType',e.target.value),options:ENTITY_TYPES,placeholder:'Select…'})),
+          h('div',{style:{...s3}},
+            h(Lbl,null,'Name to Use on 1099'),
+            h('div',{style:{display:'flex',gap:8}},
+              ['Vendor Name','DBA'].map(opt=>
+                h('button',{key:opt,onClick:()=>upd('nameOn1099',opt),style:{
+                  flex:1,padding:'8px',borderRadius:2,cursor:'pointer',fontSize:13,fontWeight:700,
+                  border:`2px solid ${f.nameOn1099===opt?C.blue:C.border}`,
+                  backgroundColor:f.nameOn1099===opt?C.blueLight:'transparent',
+                  color:f.nameOn1099===opt?C.blue:C.textSec,fontFamily:"'Segoe UI',system-ui,sans-serif"}},opt)))),
+          h('div',{style:s3},h(ApiNote,null,'On approval → POST /VendVendorEntity · Vendor created in D365 F&O')))),
+
+      // Actions
+      h('div',{style:{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:20}},
+        h('button',{onClick:onCancel,style:{padding:'7px 18px',border:`1px solid ${C.border}`,
+          backgroundColor:'transparent',borderRadius:2,cursor:'pointer',fontSize:13,color:C.textSec,
+          fontFamily:"'Segoe UI',system-ui,sans-serif"}},'Cancel'),
+        h('button',{style:{padding:'7px 18px',border:`1px solid ${C.border}`,
+          backgroundColor:'transparent',borderRadius:2,cursor:'pointer',fontSize:13,color:C.text,
+          fontFamily:"'Segoe UI',system-ui,sans-serif"}},'Save as Draft'),
+        h('button',{onClick:handleSubmit,style:{padding:'7px 22px',backgroundColor:C.blue,
+          color:'white',border:'none',borderRadius:2,cursor:'pointer',fontSize:13,fontWeight:700,
+          fontFamily:"'Segoe UI',system-ui,sans-serif"}},
+          role==='ap'?'Approve & Submit to D365':'Submit for AP Review'))));
+}
+
+// Request row table
+function ReqTable({reqs,role,onView}){
+  if(!reqs.length)return h('div',{style:{textAlign:'center',padding:32,color:C.textMuted,fontSize:13}},'No requests found.');
+  return h('div',{style:{overflowX:'auto'}},
+    h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13}},
+      h('thead',null,h('tr',{style:{borderBottom:`2px solid ${C.border}`}},
+        ['Request ID','Vendor Name','Group','Submitted','Status',...(role==='ap'?['Flags']:[]),''].map(col=>
+          h('th',{key:col,style:{padding:'6px 10px',textAlign:'left',fontSize:11,fontWeight:700,
+            color:C.textSec,textTransform:'uppercase',letterSpacing:'0.5px',whiteSpace:'nowrap'}},col)))),
+      h('tbody',null,reqs.map((r,i)=>
+        h('tr',{key:r.id,onClick:()=>onView(r),style:{borderBottom:`1px solid ${C.border}`,
+          cursor:'pointer',backgroundColor:i%2?C.surfaceAlt:'transparent'}},
+          h('td',{style:{padding:'8px 10px',color:C.blue,fontWeight:700,fontFamily:'monospace',fontSize:12}},r.id),
+          h('td',{style:{padding:'8px 10px',fontWeight:600,color:C.text,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},r.vendorName),
+          h('td',{style:{padding:'8px 10px'}},h(GroupTag,{g:r.vendorGroup})),
+          h('td',{style:{padding:'8px 10px',color:C.textSec}},r.submitted),
+          h('td',{style:{padding:'8px 10px'}},h(Badge,{status:r.status})),
+          role==='ap'&&h('td',{style:{padding:'8px 10px'}},
+            r.dupIds?.length>0&&h('span',{title:`${r.dupIds.length} potential duplicate(s)`,
+              style:{fontSize:12,backgroundColor:C.warnBg,padding:'2px 6px',borderRadius:3}},`⚠️ ${r.dupIds.length}`)),
+          h('td',{style:{padding:'8px 10px'}},
+            h('button',{onClick:e=>{e.stopPropagation();onView(r);},style:{
+              fontSize:11,padding:'3px 10px',backgroundColor:'transparent',fontFamily:"'Segoe UI',system-ui,sans-serif",
+              border:`1px solid ${C.border}`,borderRadius:2,cursor:'pointer',color:C.blue,fontWeight:700}},
+              role==='ap'&&r.status==='Pending'?'Review':'View')))))));
+}
+
+// Review Modal — no position:fixed, uses in-flow overlay wrapper
+function ReviewModal({req,onClose,onUpdate}){
+  const [decision,setDecision]=useState('');
+  const [notes,setNotes]=useState(req.apNotes||'');
+  const [done,setDone]=useState(false);
+  const dupes=req.dupIds?.map(id=>D365_VENDORS.find(v=>v.id===id)).filter(Boolean)||[];
+  const submit=()=>{
+    if(!decision)return;
+    setDone(true);
+    setTimeout(()=>{onUpdate({...req,status:decision,apNotes:notes});onClose();},1400);
+  };
+
+  return h('div',{style:{position:'absolute',top:0,left:0,right:0,bottom:0,minHeight:600,
+    backgroundColor:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-start',
+    justifyContent:'center',zIndex:500,paddingTop:40,paddingBottom:40,boxSizing:'border-box'}},
+    h('div',{style:{width:'100%',maxWidth:620,backgroundColor:C.surface,borderRadius:4,
+      boxShadow:'0 8px 32px rgba(0,0,0,.25)',overflow:'hidden'}},
+      h('div',{style:{padding:'13px 18px',borderBottom:`1px solid ${C.border}`,
+        display:'flex',justifyContent:'space-between',alignItems:'flex-start',
+        backgroundColor:C.surface}},
+        h('div',null,
+          h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+            h('h2',{style:{margin:0,fontSize:15,fontWeight:700,color:C.text}},'Review Vendor Request'),
+            h(Badge,{status:req.status})),
+          h('p',{style:{margin:'2px 0 0',fontSize:12,color:C.textSec}},
+            `${req.id} · ${req.vendorName} · Submitted by ${req.requester}`)),
+        h('button',{onClick:onClose,style:{background:'none',border:'none',fontSize:18,
+          cursor:'pointer',color:C.textMuted,lineHeight:1,padding:4}},'✕')),
+      h('div',{style:{padding:18,maxHeight:'60vh',overflowY:'auto'}},
+        done?h('div',{style:{textAlign:'center',padding:'28px 20px'}},
+          h('div',{style:{fontSize:40,marginBottom:10}},decision==='Approved'?'✅':decision==='Rejected'?'❌':'⏸️'),
+          h('div',{style:{fontSize:15,fontWeight:700,color:C.text}},`Request ${decision}!`),
+          h('div',{style:{fontSize:12,color:C.textSec,marginTop:6}},
+            decision==='Approved'?'Creating vendor record in D365 F&O…':'Notifying requester…'),
+          h(ApiNote,null,decision==='Approved'?'POST /VendVendorEntity · Assigning VEN-XXXXX':'PATCH /VendorRequestEntity · Status = Rejected'))
+        :h(Fragment,null,
+          h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}},
+            [['Vendor',req.vendorName],['Group',req.vendorGroup],['Class',req.classification||'—'],['Submitted',req.submitted]].map(([l,v])=>
+              h('div',{key:l,style:{padding:'6px 10px',backgroundColor:C.surfaceAlt,borderRadius:2,flex:1,minWidth:100}},
+                h('div',{style:{fontSize:10,fontWeight:700,color:C.textMuted,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2}},l),
+                h('div',{style:{fontSize:13,fontWeight:600,color:C.text}},v)))),
+          dupes.length>0&&h('div',{style:{padding:'10px 12px',backgroundColor:C.warnBg,
+            border:`1.5px solid ${C.warn}50`,borderRadius:3,marginBottom:14}},
+            h('div',{style:{fontSize:13,fontWeight:700,color:C.warn,marginBottom:8}},
+              `⚠️ ${dupes.length} Potential Duplicate${dupes.length>1?'s':''} in D365`),
+            dupes.map(d=>h('div',{key:d.id,style:{display:'flex',justifyContent:'space-between',
+              alignItems:'center',padding:'5px 8px',backgroundColor:C.surface,borderRadius:2,
+              marginBottom:4,fontSize:12,border:`1px solid ${C.border}`}},
+              h('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+                h('span',{style:{fontWeight:700,color:C.blue,fontFamily:'monospace'}},d.id),
+                h('span',{style:{fontWeight:600}},d.name),
+                h(GroupTag,{g:d.group})),
+              h('span',{style:{color:C.success,fontWeight:600}},d.status))),
+            h(ApiNote,null,"Verified via GET /VendVendorEntity")),
+          req.apNotes&&h('div',{style:{padding:'8px 12px',backgroundColor:C.infoBg,
+            border:`1px solid ${C.blue}20`,borderRadius:3,marginBottom:14,fontSize:12}},
+            h('span',{style:{fontWeight:700,color:C.blue}},'Previous notes: '),req.apNotes),
+          h('div',{style:{marginBottom:14}},
+            h('div',{style:{fontSize:11,fontWeight:700,color:C.textSec,textTransform:'uppercase',
+              letterSpacing:'0.5px',marginBottom:8}},'Decision'),
+            h('div',{style:{display:'flex',gap:8}},
+              [{v:'Approved',l:'Approve',icon:'✅',fg:C.success,bg:C.successBg},
+               {v:'Rejected',l:'Reject',icon:'❌',fg:C.err,bg:C.errBg},
+               {v:'On Hold',l:'Hold',icon:'⏸️',fg:C.warn,bg:C.warnBg}].map(({v,l,icon,fg,bg})=>
+                h('button',{key:v,onClick:()=>setDecision(v),style:{
+                  flex:1,padding:'10px 6px',borderRadius:2,cursor:'pointer',
+                  fontSize:13,fontWeight:700,fontFamily:"'Segoe UI',system-ui,sans-serif",
+                  border:`2px solid ${decision===v?fg:C.border}`,
+                  backgroundColor:decision===v?bg:'transparent',
+                  color:decision===v?fg:C.textSec}},
+                  h('span',{style:{fontSize:15,display:'block',marginBottom:2}},icon),l)))),
+          h('div',{style:{marginBottom:14}},
+            h(Lbl,{req:decision==='Rejected'},'Notes to Requester'),
+            h('textarea',{value:notes,onChange:e=>setNotes(e.target.value),rows:4,
+              placeholder:decision==='Rejected'?'Explain why and what the requester should do next…':'Optional notes for the requester…',
+              style:{...iSt,resize:'vertical'}})),
+          h('div',{style:{display:'flex',justifyContent:'flex-end',gap:10}},
+            h('button',{onClick:onClose,style:{padding:'7px 16px',border:`1px solid ${C.border}`,
+              backgroundColor:'transparent',borderRadius:2,cursor:'pointer',fontSize:13,
+              color:C.textSec,fontFamily:"'Segoe UI',system-ui,sans-serif"}},'Cancel'),
+            h('button',{onClick:submit,disabled:!decision||(decision==='Rejected'&&!notes.trim()),
+              style:{padding:'7px 20px',borderRadius:2,border:'none',
+                cursor:!decision?'not-allowed':'pointer',fontSize:13,fontWeight:700,
+                fontFamily:"'Segoe UI',system-ui,sans-serif",
+                backgroundColor:!decision?C.border:decision==='Approved'?C.success:decision==='Rejected'?C.err:C.warn,
+                color:!decision?C.textMuted:'white'}},'Submit Decision'))))));
+}
+
+// Requests page
+function RequestsPage({reqs,role,onView,title}){
+  const [search,setSearch]=useState('');
+  const [statusF,setStatusF]=useState('');
+  const [groupF,setGroupF]=useState('');
+  const filtered=reqs.filter(r=>{
+    const m=!search||r.vendorName.toLowerCase().includes(search.toLowerCase())||r.id.toLowerCase().includes(search.toLowerCase());
+    return m&&(!statusF||r.status===statusF)&&(!groupF||r.vendorGroup===groupF);
+  });
+  return h('div',null,
+    h('div',{style:{marginBottom:18}},
+      h('h1',{style:{margin:0,fontSize:20,fontWeight:700,color:C.text}},title),
+      h('p',{style:{margin:'4px 0 0',fontSize:13,color:C.textSec}},`${filtered.length} request${filtered.length!==1?'s':''}`)),
+    h(Card,{style:{marginBottom:12}},
+      h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}},
+        h('div',{style:{flex:'1 1 180px',position:'relative'}},
+          h('span',{style:{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',color:C.textMuted,fontSize:13,pointerEvents:'none'}},'🔍'),
+          h('input',{value:search,onChange:e=>setSearch(e.target.value),placeholder:'Search vendor name or ID…',
+            style:{...iSt,paddingLeft:26}})),
+        h('select',{value:statusF,onChange:e=>setStatusF(e.target.value),
+          style:{...iSt,width:'auto',minWidth:130,appearance:'none',color:statusF?C.text:C.textMuted}},
+          h('option',{value:''},'All Statuses'),Object.keys(STATUS).map(s=>h('option',{key:s},s))),
+        h('select',{value:groupF,onChange:e=>setGroupF(e.target.value),
+          style:{...iSt,width:'auto',minWidth:130,appearance:'none',color:groupF?C.text:C.textMuted}},
+          h('option',{value:''},'All Groups'),VENDOR_GROUPS.map(g=>h('option',{key:g},g))),
+        (search||statusF||groupF)&&h('button',{onClick:()=>{setSearch('');setStatusF('');setGroupF('');},
+          style:{padding:'7px 12px',fontSize:12,color:C.textSec,border:`1px solid ${C.border}`,
+            backgroundColor:'transparent',borderRadius:2,cursor:'pointer',fontFamily:"'Segoe UI',system-ui,sans-serif"}},'Clear'))),
+    h(Card,null,h(ReqTable,{reqs:filtered,role,onView})));
+}
+
+// Vendor search
+function VendorSearch(){
+  const [q,setQ]=useState('');
+  const results=q.length>1?D365_VENDORS.map(v=>({...v,score:sim(q,v.name)}))
+    .filter(v=>v.score>0.15||v.name.toLowerCase().includes(q.toLowerCase()))
+    .sort((a,b)=>b.score-a.score):[];
+  return h('div',null,
+    h('div',{style:{marginBottom:18}},
+      h('h1',{style:{margin:0,fontSize:20,fontWeight:700,color:C.text}},'Vendor Search'),
+      h('p',{style:{margin:'4px 0 0',fontSize:13,color:C.textSec}},'Search existing vendors in D365 F&O before submitting a new request.')),
+    h(Card,{style:{marginBottom:12}},
+      h('div',{style:{position:'relative'}},
+        h('span',{style:{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:C.textMuted,fontSize:15,pointerEvents:'none'}},'🔍'),
+        h('input',{value:q,onChange:e=>setQ(e.target.value),placeholder:'Search vendor name, ID, or Tax ID…',style:{...iSt,paddingLeft:32,fontSize:14}})),
+      h(ApiNote,null,"GET /VendVendorEntity?$filter=contains(Name,'…')")),
+    q.length>1&&h(Card,null,
+      results.length===0?h('div',{style:{textAlign:'center',padding:32,color:C.textMuted}},
+        h('div',{style:{fontSize:22,marginBottom:8}},'🔎'),
+        h('div',{style:{fontSize:14,fontWeight:600}},'No vendors found'),
+        h('div',{style:{fontSize:12,marginTop:4}},'This vendor may not yet exist in D365.'))
+      :h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13}},
+        h('thead',null,h('tr',{style:{borderBottom:`2px solid ${C.border}`}},
+          ['Vendor ID','Vendor Name','Group','Tax ID','City','Status'].map(col=>
+            h('th',{key:col,style:{padding:'6px 10px',textAlign:'left',fontSize:11,fontWeight:700,
+              color:C.textSec,textTransform:'uppercase',letterSpacing:'0.5px'}},col)))),
+        h('tbody',null,results.map((v,i)=>
+          h('tr',{key:v.id,style:{borderBottom:`1px solid ${C.border}`,backgroundColor:i%2?C.surfaceAlt:'transparent'}},
+            h('td',{style:{padding:'8px 10px',color:C.blue,fontWeight:700,fontFamily:'monospace',fontSize:12}},v.id),
+            h('td',{style:{padding:'8px 10px',fontWeight:600,color:C.text}},v.name),
+            h('td',{style:{padding:'8px 10px'}},h(GroupTag,{g:v.group})),
+            h('td',{style:{padding:'8px 10px',color:C.textSec,fontFamily:'monospace',fontSize:12}},v.taxId),
+            h('td',{style:{padding:'8px 10px',color:C.textSec}},v.city),
+            h('td',{style:{padding:'8px 10px'}},h('span',{style:{fontSize:12,fontWeight:700,color:C.success}},'● Active'))))))));
+}
+
+// Dashboard
+function Dashboard({role,reqs,onNav,onView}){
+  const mine=role==='requester'?reqs.filter(r=>r.requester==='Sarah Johnson'):reqs;
+  const pending=mine.filter(r=>r.status==='Pending').length;
+  const onHold=mine.filter(r=>r.status==='On Hold').length;
+  const approved=mine.filter(r=>r.status==='Approved').length;
+  const rejected=mine.filter(r=>r.status==='Rejected').length;
+  const flagged=reqs.filter(r=>r.dupIds?.length>0).length;
+  const stats=role==='ap'
+    ?[{l:'Pending Review',v:pending,fg:C.warn,bg:C.warnBg,icon:'⏳'},{l:'On Hold',v:onHold,fg:'#7A4F00',bg:'#FFF4CE',icon:'⏸️'},{l:'Approved (Total)',v:approved,fg:C.success,bg:C.successBg,icon:'✅'},{l:'Flagged Duplicates',v:flagged,fg:C.err,bg:C.errBg,icon:'⚠️'}]
+    :[{l:'My Pending',v:pending,fg:C.warn,bg:C.warnBg,icon:'⏳'},{l:'On Hold',v:onHold,fg:'#7A4F00',bg:'#FFF4CE',icon:'⏸️'},{l:'Approved',v:approved,fg:C.success,bg:C.successBg,icon:'✅'},{l:'Rejected',v:rejected,fg:C.err,bg:C.errBg,icon:'❌'}];
+  const tableReqs=role==='ap'?reqs.filter(r=>['Pending','On Hold'].includes(r.status)).slice(0,6):mine.slice(0,5);
+  return h('div',null,
+    h('div',{style:{marginBottom:18}},
+      h('h1',{style:{margin:0,fontSize:20,fontWeight:700,color:C.text}},role==='ap'?'AP Processor Dashboard':'Vendor Request Dashboard'),
+      h('p',{style:{margin:'4px 0 0',fontSize:13,color:C.textSec}},role==='ap'?'Review and manage incoming vendor requests':'Track your submitted vendor requests')),
+    h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'8px 14px',
+      backgroundColor:C.successBg,borderRadius:3,border:`1px solid ${C.success}30`,marginBottom:18}},
+      h('span',{style:{width:8,height:8,borderRadius:'50%',backgroundColor:C.success,flexShrink:0}}),
+      h('span',{style:{fontSize:12,fontWeight:700,color:C.success}},'D365 F&O Connected'),
+      h('span',{style:{fontSize:12,color:C.textSec}},'Vendor master sync active · Last sync: 2 min ago'),
+      h('span',{style:{marginLeft:'auto',fontSize:11,color:C.textMuted,fontStyle:'italic'}},'🔌 /VendVendorEntity · OData v4')),
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:18}},
+      stats.map(s=>h('div',{key:s.l,style:{backgroundColor:s.bg,border:`1px solid ${s.fg}25`,borderRadius:3,padding:'14px 16px'}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
+          h('div',null,
+            h('div',{style:{fontSize:28,fontWeight:700,color:s.fg,lineHeight:1}},s.v),
+            h('div',{style:{fontSize:12,color:s.fg,fontWeight:700,marginTop:5}},s.l)),
+          h('span',{style:{fontSize:20,opacity:.8}},s.icon))))),
+    h(Card,{style:{marginBottom:14}},
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+        h('h2',{style:{margin:0,fontSize:14,fontWeight:700,color:C.text}},role==='ap'?'Requests Awaiting Action':'My Recent Requests'),
+        h('button',{onClick:()=>onNav(role==='ap'?'queue':'requests'),style:{fontSize:12,color:C.blue,background:'none',border:'none',cursor:'pointer',fontWeight:700}},'View all →')),
+      h(ReqTable,{reqs:tableReqs,role,onView})),
+    role==='requester'&&h('div',{style:{padding:'14px 16px',backgroundColor:C.blueLight,borderRadius:3,
+      border:`1px solid ${C.blue}25`,display:'flex',alignItems:'center',gap:14}},
+      h('div',{style:{width:36,height:36,borderRadius:'50%',backgroundColor:C.blue,
+        display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:20,flexShrink:0}},'+'),
+      h('div',{style:{flex:1}},
+        h('div',{style:{fontSize:13,fontWeight:700,color:C.text}},'Need to add a new vendor?'),
+        h('div',{style:{fontSize:12,color:C.textSec}},'Submit a request and AP will review it against the D365 vendor master.')),
+      h('button',{onClick:()=>onNav('new'),style:{padding:'7px 18px',backgroundColor:C.blue,
+        color:'white',border:'none',borderRadius:2,fontSize:13,fontWeight:700,
+        cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Segoe UI',system-ui,sans-serif"}},'New Request')));
+}
+
+// Main App
+function App(){
+  const [role,setRole]=useState('requester');
+  const [page,setPage]=useState('dashboard');
+  const [reqs,setReqs]=useState(SEED);
+  const [selected,setSelected]=useState(null);
+  const pendingCount=reqs.filter(r=>r.status==='Pending').length;
+  const navAP=[{id:'dashboard',icon:'⬛',label:'Dashboard'},{id:'queue',icon:'📥',label:'Approval Queue',badge:pendingCount},{id:'requests',icon:'📋',label:'All Requests'},{id:'search',icon:'🔍',label:'Vendor Search'},{id:'new',icon:'➕',label:'New Request'}];
+  const navReq=[{id:'dashboard',icon:'⬛',label:'Dashboard'},{id:'new',icon:'➕',label:'New Request'},{id:'requests',icon:'📋',label:'My Requests'},{id:'search',icon:'🔍',label:'Vendor Search'}];
+  const nav=role==='ap'?navAP:navReq;
+  const handleNav=p=>{setPage(p);setSelected(null);};
+  const handleSubmit=form=>{
+    const newReq={
+      id:`REQ-2025-${String(reqs.length+42).padStart(4,'0')}`,
+      vendorName:form.vendorGroup==='EMPLOYEE'?`${form.lastName}, ${form.firstName}`.trim():form.vendorName||'(unnamed)',
+      vendorGroup:form.vendorGroup||'SUPPLIER',requester:role==='ap'?'AP Processor':'Sarah Johnson',
+      resort:form.resort,submitted:new Date().toISOString().slice(0,10),
+      status:'Received',classification:form.classification||'—',dupIds:[],apNotes:'',
+    };
+    setReqs(p=>[newReq,...p]);
+    setTimeout(()=>handleNav('requests'),1600);
+  };
+  const myReqs=role==='requester'?reqs.filter(r=>r.requester==='Sarah Johnson'):reqs;
+  const queueReqs=reqs.filter(r=>['Pending','On Hold'].includes(r.status));
+
+  return h('div',{style:{fontFamily:"'Segoe UI',system-ui,-apple-system,sans-serif",
+    minHeight:'100vh',backgroundColor:C.bg,color:C.text,position:'relative'}},
+
+    // Top bar
+    h('div',{style:{height:46,backgroundColor:C.blue,display:'flex',alignItems:'center',
+      padding:'0 16px',gap:12,position:'sticky',top:0,zIndex:100,
+      boxShadow:'0 2px 4px rgba(0,0,0,.2)'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,color:'white'}},
+        h('svg',{width:20,height:20,viewBox:'0 0 20 20',fill:'none'},
+          h('rect',{x:1,y:1,width:8,height:8,fill:'white',opacity:.9,rx:1}),
+          h('rect',{x:11,y:1,width:8,height:8,fill:'white',opacity:.6,rx:1}),
+          h('rect',{x:1,y:11,width:8,height:8,fill:'white',opacity:.6,rx:1}),
+          h('rect',{x:11,y:11,width:8,height:8,fill:'white',opacity:.9,rx:1})),
+        h('span',{style:{fontWeight:700,fontSize:15}},'Vendor Portal'),
+        h('span',{style:{opacity:.4}},'|'),
+        h('span',{style:{fontSize:12,opacity:.75}},'D365 Finance & Operations')),
+      h('div',{style:{marginLeft:'auto',display:'flex',alignItems:'center',gap:12}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:3,padding:'3px',
+          backgroundColor:'rgba(0,0,0,.2)',borderRadius:20}},
+          h('span',{style:{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:700,
+            padding:'0 6px',letterSpacing:'0.5px'}},'PERSONA'),
+          [{v:'requester',l:'Requester'},{v:'ap',l:'AP Processor'}].map(({v,l})=>
+            h('button',{key:v,onClick:()=>{setRole(v);handleNav('dashboard');},style:{
+              padding:'4px 11px',borderRadius:16,fontSize:11,fontWeight:700,
+              cursor:'pointer',border:'none',
+              backgroundColor:role===v?'white':'transparent',
+              color:role===v?C.blue:'rgba(255,255,255,.7)',
+              fontFamily:"'Segoe UI',system-ui,sans-serif"}},l))),
+        h('div',{style:{display:'flex',alignItems:'center',gap:7,color:'white',fontSize:12}},
+          h('div',{style:{width:28,height:28,borderRadius:'50%',backgroundColor:'rgba(255,255,255,.2)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11}},
+            role==='ap'?'AP':'SJ'),
+          h('div',null,
+            h('div',{style:{fontSize:12,lineHeight:1.3}},role==='ap'?'AP Processor':'Sarah Johnson'),
+            h('div',{style:{fontSize:10,opacity:.65}},(role==='ap'?'AP Dept':'Purchasing')+' · SSO'))))),
+
+    // Body
+    h('div',{style:{display:'flex',minHeight:'calc(100vh - 46px)'}},
+
+      // Sidebar
+      h('div',{style:{width:210,backgroundColor:C.surface,borderRight:`1px solid ${C.border}`,
+        display:'flex',flexDirection:'column',flexShrink:0}},
+        h('div',{style:{flex:1,paddingTop:6}},
+          nav.map(item=>h('button',{key:item.id,onClick:()=>handleNav(item.id),style:{
+            display:'flex',alignItems:'center',gap:9,width:'100%',
+            padding:'8px 14px 8px 12px',border:'none',cursor:'pointer',
+            textAlign:'left',fontFamily:"'Segoe UI',system-ui,sans-serif",
+            backgroundColor:page===item.id?C.blueLight:'transparent',
+            color:page===item.id?C.blue:C.text,
+            borderLeft:`3px solid ${page===item.id?C.blue:'transparent'}`,
+            fontSize:13,fontWeight:page===item.id?700:400}},
+            h('span',{style:{fontSize:13,opacity:.7}},item.icon),
+            h('span',{style:{flex:1}},item.label),
+            item.badge>0&&h('span',{style:{backgroundColor:C.err,color:'white',borderRadius:10,
+              padding:'1px 6px',fontSize:11,fontWeight:700}},item.badge)))),
+        h('div',{style:{padding:'10px 14px',borderTop:`1px solid ${C.border}`}},
+          h('div',{style:{fontSize:10,color:C.textMuted,fontWeight:700,textTransform:'uppercase',
+            letterSpacing:'0.5px',marginBottom:4}},'D365 Connection'),
+          h('div',{style:{display:'flex',alignItems:'center',gap:5,fontSize:12,color:C.success,fontWeight:600}},
+            h('span',{style:{width:6,height:6,borderRadius:'50%',backgroundColor:C.success}}),'Live · Finance & Operations'),
+          h('div',{style:{fontSize:10,color:C.textMuted,marginTop:1}},'corp-d365.crm.dynamics.com'))),
+
+      // Main
+      h('div',{style:{flex:1,padding:22,overflowY:'auto',minWidth:0,position:'relative'}},
+        page==='dashboard'&&h(Dashboard,{role,reqs,onNav:handleNav,onView:setSelected}),
+        page==='new'&&h(NewRequestForm,{role,onSubmit:handleSubmit,onCancel:()=>handleNav('dashboard')}),
+        page==='requests'&&h(RequestsPage,{reqs:myReqs,role,onView:setSelected,title:role==='ap'?'All Requests':'My Requests'}),
+        page==='queue'&&h(RequestsPage,{reqs:queueReqs,role,onView:setSelected,title:'Approval Queue'}),
+        page==='search'&&h(VendorSearch,null),
+
+        // Modal rendered inside the relative-positioned container
+        selected&&h(ReviewModal,{req:selected,onClose:()=>setSelected(null),
+          onUpdate:r=>{setReqs(p=>p.map(x=>x.id===r.id?r:x));setSelected(null);}}))));
+}
+
+ReactDOM.createRoot(document.getElementById('vp-root')).render(h(App,null));
+</script>
