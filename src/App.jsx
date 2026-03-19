@@ -12,8 +12,9 @@ export default function App() {
   const [page, setPage] = useState('dashboard');
   const [reqs, setReqs] = useState(SEED);
   const [selected, setSelected] = useState(null);
+  const [editingReq, setEditingReq] = useState(null);
 
-  const pendingCount = reqs.filter(r => r.status === 'Pending').length;
+  const pendingCount = reqs.filter(r => ['Received', 'Pending'].includes(r.status)).length;
 
   const navAP = [
     { id: 'dashboard', icon: '⬛', label: 'Dashboard' },
@@ -32,7 +33,42 @@ export default function App() {
 
   const handleNav = p => { setPage(p); setSelected(null); };
 
-  const handleSubmit = form => {
+  const handleDelete = id => {
+    if (!window.confirm('Delete this request? This cannot be undone.')) return;
+    setReqs(p => p.filter(r => r.id !== id));
+    setSelected(null);
+  };
+
+  const handleResubmit = (form, dupes = []) => {
+    const updated = {
+      ...editingReq,
+      vendorName: editingReq.vendorGroup === 'EMPLOYEE'
+        ? `${form.lastName}, ${form.firstName}`.trim()
+        : form.vendorName || '(unnamed)',
+      vendorGroup: form.vendorGroup || editingReq.vendorGroup,
+      resort: form.resort,
+      submitted: new Date().toISOString().slice(0, 10),
+      status: 'Received',
+      classification: form.classification || '—',
+      dupIds: dupes.map(d => d.id),
+      apNotes: editingReq.apNotes,
+    };
+    setReqs(p => p.map(r => r.id === updated.id ? updated : r));
+    setEditingReq(null);
+    setTimeout(() => handleNav('requests'), 1600);
+  };
+
+  const handleEditResubmit = req => {
+    setSelected(null);
+    setEditingReq(req);
+    setPage('new');
+  };
+
+  const handleUpdateProcessor = (id, processor) => {
+    setReqs(p => p.map(r => r.id === id ? { ...r, apProcessor: processor } : r));
+  };
+
+  const handleSubmit = (form, dupes = []) => {
     const newReq = {
       id: `REQ-2025-${String(reqs.length + 42).padStart(4, '0')}`,
       vendorName: form.vendorGroup === 'EMPLOYEE'
@@ -44,15 +80,16 @@ export default function App() {
       submitted: new Date().toISOString().slice(0, 10),
       status: 'Received',
       classification: form.classification || '—',
-      dupIds: [],
+      dupIds: dupes.map(d => d.id),
       apNotes: '',
+      apProcessor: '',
     };
     setReqs(p => [newReq, ...p]);
     setTimeout(() => handleNav('requests'), 1600);
   };
 
   const myReqs = role === 'requester' ? reqs.filter(r => r.requester === 'Sarah Johnson') : reqs;
-  const queueReqs = reqs.filter(r => ['Pending', 'On Hold'].includes(r.status));
+  const queueReqs = reqs.filter(r => ['Pending', 'Received'].includes(r.status));
 
   return (
     <div style={{
@@ -87,7 +124,7 @@ export default function App() {
               padding: '0 6px', letterSpacing: '0.5px',
             }}>PERSONA</span>
             {[{ v: 'requester', l: 'Requester' }, { v: 'ap', l: 'AP Processor' }].map(({ v, l }) => (
-              <button key={v} onClick={() => { setRole(v); handleNav('dashboard'); }} style={{
+              <button key={v} onClick={() => { setRole(v); setEditingReq(null); handleNav('dashboard'); }} style={{
                 padding: '4px 11px', borderRadius: 16, fontSize: 11, fontWeight: 700,
                 cursor: 'pointer', border: 'none',
                 backgroundColor: role === v ? 'white' : 'transparent',
@@ -156,17 +193,28 @@ export default function App() {
 
         {/* Main content */}
         <div style={{ flex: 1, padding: 22, overflowY: 'auto', minWidth: 0, position: 'relative' }}>
-          {page === 'dashboard' && <Dashboard role={role} reqs={reqs} onNav={handleNav} onView={setSelected} />}
-          {page === 'new' && <NewRequestForm role={role} onSubmit={handleSubmit} onCancel={() => handleNav('dashboard')} />}
-          {page === 'requests' && <RequestsPage reqs={myReqs} role={role} onView={setSelected} title={role === 'ap' ? 'All Requests' : 'My Requests'} />}
-          {page === 'queue' && <RequestsPage reqs={queueReqs} role={role} onView={setSelected} title="Approval Queue" />}
+          {page === 'dashboard' && <Dashboard role={role} reqs={reqs} onNav={handleNav} onView={setSelected} onUpdateProcessor={handleUpdateProcessor} />}
+          {page === 'new' && (
+            <NewRequestForm
+              role={role}
+              initialData={editingReq}
+              onSubmit={editingReq ? null : handleSubmit}
+              onResubmit={editingReq ? handleResubmit : null}
+              onCancel={() => { setEditingReq(null); handleNav('dashboard'); }}
+            />
+          )}
+          {page === 'requests' && <RequestsPage reqs={myReqs} role={role} onView={setSelected} onUpdateProcessor={handleUpdateProcessor} title={role === 'ap' ? 'All Requests' : 'My Requests'} />}
+          {page === 'queue' && <RequestsPage reqs={queueReqs} role={role} onView={setSelected} onUpdateProcessor={handleUpdateProcessor} title="Approval Queue" />}
           {page === 'search' && <VendorSearch />}
 
           {selected && (
             <ReviewModal
               req={selected}
+              role={role}
               onClose={() => setSelected(null)}
               onUpdate={r => { setReqs(p => p.map(x => x.id === r.id ? r : x)); setSelected(null); }}
+              onEditResubmit={handleEditResubmit}
+              onDelete={handleDelete}
             />
           )}
         </div>

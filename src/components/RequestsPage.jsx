@@ -1,19 +1,24 @@
 import { useState } from 'react';
-import { C, STATUS, VENDOR_GROUPS, iSt } from '../constants';
+import { C, STATUS, VENDOR_GROUPS, AP_PROCESSORS, iSt } from '../constants';
 import { Card } from './shared';
 import ReqTable from './ReqTable';
 
-export default function RequestsPage({ reqs, role, onView, title }) {
+export default function RequestsPage({ reqs, role, onView, onUpdateProcessor, title }) {
   const [search, setSearch] = useState('');
   const [statusF, setStatusF] = useState('');
   const [groupF, setGroupF] = useState('');
+  const [processorF, setProcessorF] = useState('');
 
   const filtered = reqs.filter(r => {
     const m = !search
       || r.vendorName.toLowerCase().includes(search.toLowerCase())
       || r.id.toLowerCase().includes(search.toLowerCase());
-    return m && (!statusF || r.status === statusF) && (!groupF || r.vendorGroup === groupF);
+    const p = !processorF
+      || (processorF === '__unassigned__' ? !r.apProcessor : r.apProcessor === processorF);
+    return m && (!statusF || r.status === statusF) && (!groupF || r.vendorGroup === groupF) && p;
   });
+
+  const hasFilters = search || statusF || groupF || processorF;
 
   return (
     <div>
@@ -54,9 +59,20 @@ export default function RequestsPage({ reqs, role, onView, title }) {
             <option value="">All Groups</option>
             {VENDOR_GROUPS.map(g => <option key={g}>{g}</option>)}
           </select>
-          {(search || statusF || groupF) && (
+          {role === 'ap' && (
+            <select
+              value={processorF}
+              onChange={e => setProcessorF(e.target.value)}
+              style={{ ...iSt, width: 'auto', minWidth: 150, appearance: 'none', color: processorF ? C.text : C.textMuted }}
+            >
+              <option value="">All Processors</option>
+              <option value="__unassigned__">Unassigned</option>
+              {AP_PROCESSORS.map(p => <option key={p}>{p}</option>)}
+            </select>
+          )}
+          {hasFilters && (
             <button
-              onClick={() => { setSearch(''); setStatusF(''); setGroupF(''); }}
+              onClick={() => { setSearch(''); setStatusF(''); setGroupF(''); setProcessorF(''); }}
               style={{
                 padding: '7px 12px', fontSize: 12, color: C.textSec,
                 border: `1px solid ${C.border}`, backgroundColor: 'transparent',
@@ -70,7 +86,7 @@ export default function RequestsPage({ reqs, role, onView, title }) {
       </Card>
 
       <Card>
-        <ReqTable reqs={filtered} role={role} onView={onView} />
+        <ReqTable reqs={filtered} role={role} onView={onView} onUpdateProcessor={onUpdateProcessor} />
       </Card>
     </div>
   );

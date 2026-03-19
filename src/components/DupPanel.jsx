@@ -33,6 +33,12 @@ export default function DupPanel({ dupes }) {
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <span style={{ color: C.textSec }}>{d.city}</span>
               <span style={{
+                fontSize: 11, fontWeight: 700,
+                color: d.status === 'On Hold' ? C.warn : C.success,
+              }}>
+                {d.status === 'On Hold' ? '⚠️ On Hold' : '● Active'}
+              </span>
+              <span style={{
                 padding: '2px 7px', borderRadius: 10, fontSize: 11, fontWeight: 700,
                 backgroundColor: pct > 70 ? C.errBg : C.warnBg,
                 color: pct > 70 ? C.err : C.warn,

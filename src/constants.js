@@ -24,7 +24,6 @@ export const C = {
 
 export const STATUS = {
   Pending: { fg: C.warn, bg: C.warnBg, dot: C.warn, label: 'Pending Review' },
-  'On Hold': { fg: '#7A4F00', bg: '#FFF4CE', dot: C.warn, label: 'On Hold' },
   Approved: { fg: C.success, bg: C.successBg, dot: C.success, label: 'Approved' },
   Rejected: { fg: C.err, bg: C.errBg, dot: C.err, label: 'Rejected' },
   Received: { fg: C.blue, bg: C.blueLight, dot: C.blue, label: 'Received' },
@@ -39,6 +38,7 @@ export const RESORTS = [
 ];
 
 export const VENDOR_GROUPS = ['SUPPLIER', 'SERVICE', 'EMPLOYEE', 'CONTRACTOR', 'INTERCOMPANY'];
+export const AP_PROCESSORS = ['Sarah Johnson', 'Maria Santos', 'James Wu', 'Patricia Adams'];
 export const PAY_TERMS = ['Net 30', 'Net 45', 'Net 60', 'Net 15', 'Due on Receipt', '2/10 Net 30'];
 export const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'MXN', 'JPY'];
 export const PAY_METHODS = ['Check', 'ACH', 'Wire Transfer', 'Credit Card', 'Virtual Card'];

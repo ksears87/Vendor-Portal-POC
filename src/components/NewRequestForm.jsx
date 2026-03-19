@@ -23,8 +23,8 @@ const g3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 };
 const s2 = { gridColumn: 'span 2' };
 const s3 = { gridColumn: 'span 3' };
 
-export default function NewRequestForm({ role, onSubmit, onCancel }) {
-  const [f, setF] = useState(blank);
+export default function NewRequestForm({ role, initialData, onSubmit, onResubmit, onCancel }) {
+  const [f, setF] = useState(initialData || blank);
   const [dupes, setDupes] = useState([]);
   const [timer, setTimer] = useState(null);
   const [done, setDone] = useState(false);
@@ -39,7 +39,10 @@ export default function NewRequestForm({ role, onSubmit, onCancel }) {
 
   const handleSubmit = () => {
     setDone(true);
-    setTimeout(() => onSubmit(f), 1400);
+    setTimeout(() => {
+      if (onResubmit) onResubmit(f, dupes);
+      else onSubmit(f, dupes);
+    }, 1400);
   };
 
   if (done) {
@@ -52,11 +55,17 @@ export default function NewRequestForm({ role, onSubmit, onCancel }) {
           width: 60, height: 60, borderRadius: '50%', backgroundColor: C.successBg,
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
         }}>📬</div>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>Request Submitted</h2>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>
+          {onResubmit ? 'Request Resubmitted' : 'Request Submitted'}
+        </h2>
         <p style={{ margin: 0, fontSize: 13, color: C.textSec, maxWidth: 380 }}>
-          Your vendor request has been sent to the AP team for review.
+          {onResubmit
+            ? 'Your updated request has been sent back to the AP team for review.'
+            : 'Your vendor request has been sent to the AP team for review.'}
         </p>
-        <ApiNote>POST /VendorRequestEntity · Pending AP approval</ApiNote>
+        <ApiNote>
+          {onResubmit ? 'PATCH /VendorRequestEntity · Status = Received' : 'POST /VendorRequestEntity · Pending AP approval'}
+        </ApiNote>
       </div>
     );
   }
@@ -65,13 +74,35 @@ export default function NewRequestForm({ role, onSubmit, onCancel }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text }}>New Vendor Request</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text }}>
+            {initialData ? 'Edit & Resubmit Request' : 'New Vendor Request'}
+          </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: C.textSec }}>
-            Complete all required fields. AP will review against the D365 vendor master.
+            {initialData
+              ? 'Update the details below and resubmit for AP review.'
+              : 'Complete all required fields. AP will review against the D365 vendor master.'}
           </p>
         </div>
         <ApiNote>D365 F&O · /VendVendorEntity</ApiNote>
       </div>
+
+      {initialData?.apNotes && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: C.errBg,
+          border: `1.5px solid ${C.err}40`,
+          borderRadius: 3,
+          marginBottom: 18,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.err, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+            AP Feedback (from previous review)
+          </div>
+          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{initialData.apNotes}</div>
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
+            This feedback is preserved and will remain visible to AP. Address the issues above before resubmitting.
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -391,7 +422,7 @@ export default function NewRequestForm({ role, onSubmit, onCancel }) {
             borderRadius: 2, cursor: 'pointer', fontSize: 13, fontWeight: 700,
             fontFamily: "'Segoe UI',system-ui,sans-serif",
           }}>
-            {role === 'ap' ? 'Approve & Submit to D365' : 'Submit for AP Review'}
+            {onResubmit ? 'Resubmit for Approval' : role === 'ap' ? 'Approve & Submit to D365' : 'Submit for AP Review'}
           </button>
         </div>
       </div>

@@ -67,7 +67,12 @@ export default function VendorSearch() {
                     <td style={{ padding: '8px 10px', color: C.textSec, fontFamily: 'monospace', fontSize: 12 }}>{v.taxId}</td>
                     <td style={{ padding: '8px 10px', color: C.textSec }}>{v.city}</td>
                     <td style={{ padding: '8px 10px' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: C.success }}>● Active</span>
+                      <span style={{
+                        fontSize: 12, fontWeight: 700,
+                        color: v.status === 'On Hold' ? C.warn : C.success,
+                      }}>
+                        {v.status === 'On Hold' ? '⚠️ ' : '● '}{v.status}
+                      </span>
                     </td>
                   </tr>
                 ))}
