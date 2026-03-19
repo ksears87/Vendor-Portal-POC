@@ -40,8 +40,8 @@ export default function NewRequestForm({ role, initialData, onSubmit, onResubmit
   const handleSubmit = () => {
     setDone(true);
     setTimeout(() => {
-      if (onResubmit) onResubmit(f);
-      else onSubmit(f);
+      if (onResubmit) onResubmit(f, dupes);
+      else onSubmit(f, dupes);
     }, 1400);
   };
 

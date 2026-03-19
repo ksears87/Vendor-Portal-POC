@@ -3,7 +3,7 @@ import { C, STATUS, VENDOR_GROUPS, AP_PROCESSORS, iSt } from '../constants';
 import { Card } from './shared';
 import ReqTable from './ReqTable';
 
-export default function RequestsPage({ reqs, role, onView, title }) {
+export default function RequestsPage({ reqs, role, onView, onUpdateProcessor, title }) {
   const [search, setSearch] = useState('');
   const [statusF, setStatusF] = useState('');
   const [groupF, setGroupF] = useState('');
@@ -86,7 +86,7 @@ export default function RequestsPage({ reqs, role, onView, title }) {
       </Card>
 
       <Card>
-        <ReqTable reqs={filtered} role={role} onView={onView} />
+        <ReqTable reqs={filtered} role={role} onView={onView} onUpdateProcessor={onUpdateProcessor} />
       </Card>
     </div>
   );

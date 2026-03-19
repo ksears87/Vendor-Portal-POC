@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { C, iSt } from '../constants';
 import { D365_VENDORS } from '../mockData';
+import { detectDupes } from '../utils';
 import { Badge, GroupTag, Lbl, ApiNote } from './shared';
 
 export default function ReviewModal({ req, role, onClose, onUpdate, onEditResubmit, onDelete }) {
   const [decision, setDecision] = useState('');
   const [notes, setNotes] = useState(req.apNotes || '');
   const [done, setDone] = useState(false);
-  const dupes = req.dupIds?.map(id => D365_VENDORS.find(v => v.id === id)).filter(Boolean) || [];
+
+  // Merge stored dupIds with fresh detection so AP always sees complete results
+  // even if requester bypassed warnings at submission time
+  const storedDupes = req.dupIds?.map(id => D365_VENDORS.find(v => v.id === id)).filter(Boolean) || [];
+  const freshDupes = detectDupes(req.vendorName);
+  const allDupeIds = new Set([...storedDupes.map(d => d.id), ...freshDupes.map(d => d.id)]);
+  const dupes = [...allDupeIds].map(id => D365_VENDORS.find(v => v.id === id)).filter(Boolean);
+
+  const markPending = () => { onUpdate({ ...req, status: 'Pending' }); onClose(); };
 
   const submit = () => {
     if (!decision) return;
@@ -113,6 +122,29 @@ export default function ReviewModal({ req, role, onClose, onUpdate, onEditResubm
                   border: `1px solid ${C.blue}20`, borderRadius: 3, marginBottom: 14, fontSize: 12,
                 }}>
                   <span style={{ fontWeight: 700, color: C.blue }}>Previous notes: </span>{req.apNotes}
+                </div>
+              )}
+
+              {/* Triage banner — shown only for Received requests */}
+              {req.status === 'Received' && (
+                <div style={{
+                  padding: '10px 14px', backgroundColor: C.blueLight,
+                  border: `1.5px solid ${C.blue}30`, borderRadius: 3, marginBottom: 14,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.blue, marginBottom: 2 }}>
+                      📥 Not yet picked up
+                    </div>
+                    <div style={{ fontSize: 12, color: C.textSec }}>
+                      Mark as Pending Review to begin your assessment, or decide below to resolve immediately.
+                    </div>
+                  </div>
+                  <button onClick={markPending} style={{
+                    padding: '6px 14px', backgroundColor: C.blue, color: 'white',
+                    border: 'none', borderRadius: 2, cursor: 'pointer', whiteSpace: 'nowrap',
+                    fontSize: 12, fontWeight: 700, fontFamily: "'Segoe UI',system-ui,sans-serif", flexShrink: 0,
+                  }}>Mark as Pending Review</button>
                 </div>
               )}
 

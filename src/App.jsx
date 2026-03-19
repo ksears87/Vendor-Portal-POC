@@ -14,7 +14,7 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [editingReq, setEditingReq] = useState(null);
 
-  const pendingCount = reqs.filter(r => r.status === 'Pending').length;
+  const pendingCount = reqs.filter(r => ['Received', 'Pending'].includes(r.status)).length;
 
   const navAP = [
     { id: 'dashboard', icon: '⬛', label: 'Dashboard' },
@@ -39,7 +39,7 @@ export default function App() {
     setSelected(null);
   };
 
-  const handleResubmit = form => {
+  const handleResubmit = (form, dupes = []) => {
     const updated = {
       ...editingReq,
       vendorName: editingReq.vendorGroup === 'EMPLOYEE'
@@ -50,6 +50,7 @@ export default function App() {
       submitted: new Date().toISOString().slice(0, 10),
       status: 'Received',
       classification: form.classification || '—',
+      dupIds: dupes.map(d => d.id),
       apNotes: editingReq.apNotes,
     };
     setReqs(p => p.map(r => r.id === updated.id ? updated : r));
@@ -63,7 +64,11 @@ export default function App() {
     setPage('new');
   };
 
-  const handleSubmit = form => {
+  const handleUpdateProcessor = (id, processor) => {
+    setReqs(p => p.map(r => r.id === id ? { ...r, apProcessor: processor } : r));
+  };
+
+  const handleSubmit = (form, dupes = []) => {
     const newReq = {
       id: `REQ-2025-${String(reqs.length + 42).padStart(4, '0')}`,
       vendorName: form.vendorGroup === 'EMPLOYEE'
@@ -75,7 +80,7 @@ export default function App() {
       submitted: new Date().toISOString().slice(0, 10),
       status: 'Received',
       classification: form.classification || '—',
-      dupIds: [],
+      dupIds: dupes.map(d => d.id),
       apNotes: '',
       apProcessor: '',
     };
@@ -188,7 +193,7 @@ export default function App() {
 
         {/* Main content */}
         <div style={{ flex: 1, padding: 22, overflowY: 'auto', minWidth: 0, position: 'relative' }}>
-          {page === 'dashboard' && <Dashboard role={role} reqs={reqs} onNav={handleNav} onView={setSelected} />}
+          {page === 'dashboard' && <Dashboard role={role} reqs={reqs} onNav={handleNav} onView={setSelected} onUpdateProcessor={handleUpdateProcessor} />}
           {page === 'new' && (
             <NewRequestForm
               role={role}
@@ -198,8 +203,8 @@ export default function App() {
               onCancel={() => { setEditingReq(null); handleNav('dashboard'); }}
             />
           )}
-          {page === 'requests' && <RequestsPage reqs={myReqs} role={role} onView={setSelected} title={role === 'ap' ? 'All Requests' : 'My Requests'} />}
-          {page === 'queue' && <RequestsPage reqs={queueReqs} role={role} onView={setSelected} title="Approval Queue" />}
+          {page === 'requests' && <RequestsPage reqs={myReqs} role={role} onView={setSelected} onUpdateProcessor={handleUpdateProcessor} title={role === 'ap' ? 'All Requests' : 'My Requests'} />}
+          {page === 'queue' && <RequestsPage reqs={queueReqs} role={role} onView={setSelected} onUpdateProcessor={handleUpdateProcessor} title="Approval Queue" />}
           {page === 'search' && <VendorSearch />}
 
           {selected && (

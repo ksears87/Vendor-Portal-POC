@@ -2,7 +2,7 @@ import { C } from '../constants';
 import { Card } from './shared';
 import ReqTable from './ReqTable';
 
-export default function Dashboard({ role, reqs, onNav, onView }) {
+export default function Dashboard({ role, reqs, onNav, onView, onUpdateProcessor }) {
   const mine = role === 'requester' ? reqs.filter(r => r.requester === 'Sarah Johnson') : reqs;
   const received = mine.filter(r => r.status === 'Received').length;
   const pending = mine.filter(r => r.status === 'Pending').length;
@@ -79,7 +79,7 @@ export default function Dashboard({ role, reqs, onNav, onView }) {
             View all →
           </button>
         </div>
-        <ReqTable reqs={tableReqs} role={role} onView={onView} />
+        <ReqTable reqs={tableReqs} role={role} onView={onView} onUpdateProcessor={onUpdateProcessor} />
       </Card>
 
       {role === 'requester' && (
