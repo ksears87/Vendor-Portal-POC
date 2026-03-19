@@ -57,7 +57,11 @@ export default function ReqTable({ reqs, role, onView }) {
                     color: C.blue, fontWeight: 700,
                   }}
                 >
-                  {role === 'ap' && r.status === 'Pending' ? 'Review' : 'View'}
+                  {role === 'ap' && r.status === 'Pending'
+                    ? 'Review'
+                    : role === 'requester' && r.status === 'Rejected'
+                      ? 'Edit'
+                      : 'View'}
                 </button>
               </td>
             </tr>

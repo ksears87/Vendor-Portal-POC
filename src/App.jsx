@@ -12,6 +12,7 @@ export default function App() {
   const [page, setPage] = useState('dashboard');
   const [reqs, setReqs] = useState(SEED);
   const [selected, setSelected] = useState(null);
+  const [editingReq, setEditingReq] = useState(null);
 
   const pendingCount = reqs.filter(r => r.status === 'Pending').length;
 
@@ -31,6 +32,36 @@ export default function App() {
   const nav = role === 'ap' ? navAP : navReq;
 
   const handleNav = p => { setPage(p); setSelected(null); };
+
+  const handleDelete = id => {
+    if (!window.confirm('Delete this request? This cannot be undone.')) return;
+    setReqs(p => p.filter(r => r.id !== id));
+    setSelected(null);
+  };
+
+  const handleResubmit = form => {
+    const updated = {
+      ...editingReq,
+      vendorName: editingReq.vendorGroup === 'EMPLOYEE'
+        ? `${form.lastName}, ${form.firstName}`.trim()
+        : form.vendorName || '(unnamed)',
+      vendorGroup: form.vendorGroup || editingReq.vendorGroup,
+      resort: form.resort,
+      submitted: new Date().toISOString().slice(0, 10),
+      status: 'Received',
+      classification: form.classification || '—',
+      apNotes: editingReq.apNotes,
+    };
+    setReqs(p => p.map(r => r.id === updated.id ? updated : r));
+    setEditingReq(null);
+    setTimeout(() => handleNav('requests'), 1600);
+  };
+
+  const handleEditResubmit = req => {
+    setSelected(null);
+    setEditingReq(req);
+    setPage('new');
+  };
 
   const handleSubmit = form => {
     const newReq = {
@@ -87,7 +118,7 @@ export default function App() {
               padding: '0 6px', letterSpacing: '0.5px',
             }}>PERSONA</span>
             {[{ v: 'requester', l: 'Requester' }, { v: 'ap', l: 'AP Processor' }].map(({ v, l }) => (
-              <button key={v} onClick={() => { setRole(v); handleNav('dashboard'); }} style={{
+              <button key={v} onClick={() => { setRole(v); setEditingReq(null); handleNav('dashboard'); }} style={{
                 padding: '4px 11px', borderRadius: 16, fontSize: 11, fontWeight: 700,
                 cursor: 'pointer', border: 'none',
                 backgroundColor: role === v ? 'white' : 'transparent',
@@ -157,7 +188,15 @@ export default function App() {
         {/* Main content */}
         <div style={{ flex: 1, padding: 22, overflowY: 'auto', minWidth: 0, position: 'relative' }}>
           {page === 'dashboard' && <Dashboard role={role} reqs={reqs} onNav={handleNav} onView={setSelected} />}
-          {page === 'new' && <NewRequestForm role={role} onSubmit={handleSubmit} onCancel={() => handleNav('dashboard')} />}
+          {page === 'new' && (
+            <NewRequestForm
+              role={role}
+              initialData={editingReq}
+              onSubmit={editingReq ? null : handleSubmit}
+              onResubmit={editingReq ? handleResubmit : null}
+              onCancel={() => { setEditingReq(null); handleNav('dashboard'); }}
+            />
+          )}
           {page === 'requests' && <RequestsPage reqs={myReqs} role={role} onView={setSelected} title={role === 'ap' ? 'All Requests' : 'My Requests'} />}
           {page === 'queue' && <RequestsPage reqs={queueReqs} role={role} onView={setSelected} title="Approval Queue" />}
           {page === 'search' && <VendorSearch />}
@@ -165,8 +204,11 @@ export default function App() {
           {selected && (
             <ReviewModal
               req={selected}
+              role={role}
               onClose={() => setSelected(null)}
               onUpdate={r => { setReqs(p => p.map(x => x.id === r.id ? r : x)); setSelected(null); }}
+              onEditResubmit={handleEditResubmit}
+              onDelete={handleDelete}
             />
           )}
         </div>

@@ -3,7 +3,7 @@ import { C, iSt } from '../constants';
 import { D365_VENDORS } from '../mockData';
 import { Badge, GroupTag, Lbl, ApiNote } from './shared';
 
-export default function ReviewModal({ req, onClose, onUpdate }) {
+export default function ReviewModal({ req, role, onClose, onUpdate, onEditResubmit, onDelete }) {
   const [decision, setDecision] = useState('');
   const [notes, setNotes] = useState(req.apNotes || '');
   const [done, setDone] = useState(false);
@@ -33,7 +33,9 @@ export default function ReviewModal({ req, onClose, onUpdate }) {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>Review Vendor Request</h2>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>
+                {role === 'ap' ? 'Review Vendor Request' : 'Request Details'}
+              </h2>
               <Badge status={req.status} />
             </div>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: C.textSec }}>
@@ -61,7 +63,7 @@ export default function ReviewModal({ req, onClose, onUpdate }) {
                 {decision === 'Approved' ? 'POST /VendVendorEntity · Assigning VEN-XXXXX' : 'PATCH /VendorRequestEntity · Status = Rejected'}
               </ApiNote>
             </div>
-          ) : (
+          ) : role === 'ap' ? (
             <>
               {/* Info chips */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -168,6 +170,72 @@ export default function ReviewModal({ req, onClose, onUpdate }) {
                     color: !decision ? C.textMuted : 'white',
                   }}
                 >Submit Decision</button>
+              </div>
+            </>
+          ) : (
+            /* Requester read-only view */
+            <>
+              {/* Info chips */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                {[['Vendor', req.vendorName], ['Group', req.vendorGroup], ['Class', req.classification || '—'], ['Submitted', req.submitted]].map(([l, v]) => (
+                  <div key={l} style={{
+                    padding: '6px 10px', backgroundColor: C.surfaceAlt, borderRadius: 2, flex: 1, minWidth: 100,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>{l}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* AP Feedback — read-only */}
+              {req.apNotes && (
+                <div style={{
+                  padding: '10px 14px',
+                  backgroundColor: req.status === 'Rejected' ? C.errBg : C.infoBg,
+                  border: `1.5px solid ${req.status === 'Rejected' ? C.err + '40' : C.blue + '30'}`,
+                  borderRadius: 3,
+                  marginBottom: 16,
+                }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: req.status === 'Rejected' ? C.err : C.blue,
+                    textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4,
+                  }}>
+                    AP Feedback
+                  </div>
+                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{req.apNotes}</div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+                {req.status === 'Rejected' && (
+                  <>
+                    <button
+                      onClick={() => onDelete(req.id)}
+                      style={{
+                        padding: '7px 16px', border: `1px solid ${C.err}`,
+                        backgroundColor: 'transparent', borderRadius: 2, cursor: 'pointer',
+                        fontSize: 13, color: C.err, fontWeight: 700,
+                        fontFamily: "'Segoe UI',system-ui,sans-serif",
+                      }}
+                    >Delete Request</button>
+                    <button
+                      onClick={() => onEditResubmit(req)}
+                      style={{
+                        padding: '7px 20px', backgroundColor: C.blue, color: 'white',
+                        border: 'none', borderRadius: 2, cursor: 'pointer',
+                        fontSize: 13, fontWeight: 700,
+                        fontFamily: "'Segoe UI',system-ui,sans-serif",
+                      }}
+                    >Edit &amp; Resubmit</button>
+                  </>
+                )}
+                <button onClick={onClose} style={{
+                  padding: '7px 16px', border: `1px solid ${C.border}`,
+                  backgroundColor: 'transparent', borderRadius: 2, cursor: 'pointer',
+                  fontSize: 13, color: C.textSec, fontFamily: "'Segoe UI',system-ui,sans-serif",
+                }}>Close</button>
               </div>
             </>
           )}
