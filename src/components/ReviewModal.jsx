@@ -97,7 +97,9 @@ export default function ReviewModal({ req, role, onClose, onUpdate, onEditResubm
                         <span style={{ fontWeight: 600 }}>{d.name}</span>
                         <GroupTag g={d.group} />
                       </div>
-                      <span style={{ color: C.success, fontWeight: 600 }}>{d.status}</span>
+                      <span style={{ fontWeight: 600, color: d.status === 'On Hold' ? C.warn : C.success }}>
+                        {d.status === 'On Hold' ? '⚠️ ' : '● '}{d.status}
+                      </span>
                     </div>
                   ))}
                   <ApiNote>Verified via GET /VendVendorEntity</ApiNote>
@@ -124,7 +126,6 @@ export default function ReviewModal({ req, role, onClose, onUpdate, onEditResubm
                   {[
                     { v: 'Approved', l: 'Approve', icon: '✅', fg: C.success, bg: C.successBg },
                     { v: 'Rejected', l: 'Reject', icon: '❌', fg: C.err, bg: C.errBg },
-                    { v: 'On Hold', l: 'Hold', icon: '⏸️', fg: C.warn, bg: C.warnBg },
                   ].map(({ v, l, icon, fg, bg }) => (
                     <button key={v} onClick={() => setDecision(v)} style={{
                       flex: 1, padding: '10px 6px', borderRadius: 2, cursor: 'pointer',

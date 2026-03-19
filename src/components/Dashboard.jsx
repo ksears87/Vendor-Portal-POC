@@ -4,28 +4,28 @@ import ReqTable from './ReqTable';
 
 export default function Dashboard({ role, reqs, onNav, onView }) {
   const mine = role === 'requester' ? reqs.filter(r => r.requester === 'Sarah Johnson') : reqs;
+  const received = mine.filter(r => r.status === 'Received').length;
   const pending = mine.filter(r => r.status === 'Pending').length;
-  const onHold = mine.filter(r => r.status === 'On Hold').length;
   const approved = mine.filter(r => r.status === 'Approved').length;
   const rejected = mine.filter(r => r.status === 'Rejected').length;
   const flagged = reqs.filter(r => r.dupIds?.length > 0).length;
 
   const stats = role === 'ap'
     ? [
+        { l: 'Newly Received', v: received, fg: C.blue, bg: C.blueLight, icon: '📥' },
         { l: 'Pending Review', v: pending, fg: C.warn, bg: C.warnBg, icon: '⏳' },
-        { l: 'On Hold', v: onHold, fg: '#7A4F00', bg: '#FFF4CE', icon: '⏸️' },
         { l: 'Approved (Total)', v: approved, fg: C.success, bg: C.successBg, icon: '✅' },
         { l: 'Flagged Duplicates', v: flagged, fg: C.err, bg: C.errBg, icon: '⚠️' },
       ]
     : [
-        { l: 'My Pending', v: pending, fg: C.warn, bg: C.warnBg, icon: '⏳' },
-        { l: 'On Hold', v: onHold, fg: '#7A4F00', bg: '#FFF4CE', icon: '⏸️' },
+        { l: 'Submitted', v: received, fg: C.blue, bg: C.blueLight, icon: '📬' },
+        { l: 'In Review', v: pending, fg: C.warn, bg: C.warnBg, icon: '⏳' },
         { l: 'Approved', v: approved, fg: C.success, bg: C.successBg, icon: '✅' },
         { l: 'Rejected', v: rejected, fg: C.err, bg: C.errBg, icon: '❌' },
       ];
 
   const tableReqs = role === 'ap'
-    ? reqs.filter(r => ['Pending', 'On Hold'].includes(r.status)).slice(0, 6)
+    ? reqs.filter(r => ['Pending', 'Received'].includes(r.status)).slice(0, 6)
     : mine.slice(0, 5);
 
   return (

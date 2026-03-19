@@ -9,7 +9,7 @@ export default function ReqTable({ reqs, role, onView }) {
       </div>
     );
   }
-  const cols = ['Request ID', 'Vendor Name', 'Group', 'Submitted', 'Status', ...(role === 'ap' ? ['Flags'] : []), ''];
+  const cols = ['Request ID', 'Vendor Name', 'Group', 'Submitted', 'Status', ...(role === 'ap' ? ['AP Processor', 'Flags'] : []), ''];
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -36,6 +36,11 @@ export default function ReqTable({ reqs, role, onView }) {
               <td style={{ padding: '8px 10px', color: C.textSec }}>{r.submitted}</td>
               <td style={{ padding: '8px 10px' }}><Badge status={r.status} /></td>
               {role === 'ap' && (
+                <td style={{ padding: '8px 10px', color: r.apProcessor ? C.text : C.textMuted, fontSize: 12 }}>
+                  {r.apProcessor || <span style={{ fontStyle: 'italic' }}>Unassigned</span>}
+                </td>
+              )}
+              {role === 'ap' && (
                 <td style={{ padding: '8px 10px' }}>
                   {r.dupIds?.length > 0 && (
                     <span
@@ -57,7 +62,7 @@ export default function ReqTable({ reqs, role, onView }) {
                     color: C.blue, fontWeight: 700,
                   }}
                 >
-                  {role === 'ap' && r.status === 'Pending'
+                  {role === 'ap' && ['Pending', 'Received'].includes(r.status)
                     ? 'Review'
                     : role === 'requester' && r.status === 'Rejected'
                       ? 'Edit'

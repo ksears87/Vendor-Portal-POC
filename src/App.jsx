@@ -77,13 +77,14 @@ export default function App() {
       classification: form.classification || '—',
       dupIds: [],
       apNotes: '',
+      apProcessor: '',
     };
     setReqs(p => [newReq, ...p]);
     setTimeout(() => handleNav('requests'), 1600);
   };
 
   const myReqs = role === 'requester' ? reqs.filter(r => r.requester === 'Sarah Johnson') : reqs;
-  const queueReqs = reqs.filter(r => ['Pending', 'On Hold'].includes(r.status));
+  const queueReqs = reqs.filter(r => ['Pending', 'Received'].includes(r.status));
 
   return (
     <div style={{
